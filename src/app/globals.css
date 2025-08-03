@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@font-face {
+  font-family: "mona-sans";
+  src: url("/fonts/mona-sans.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+}
+
+.loader {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border-top: 8px solid #4CAF50;
+  border-left: 8px solid #4CAF50;
+  border-right: 8px solid #4CAF50;
+  animation: loader .7s infinite linear;
+}
+
+@keyframes loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

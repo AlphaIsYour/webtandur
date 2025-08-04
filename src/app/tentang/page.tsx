@@ -195,7 +195,7 @@ export default function AboutPage() {
           </p>
           <div className="flex justify-center gap-4">
             <a
-              href="/daftar-petani"
+              href="/sign-up"
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
             >
               Daftar sebagai Petani

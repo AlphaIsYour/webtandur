@@ -1,90 +1,59 @@
+// src/app/api/upload/route.ts
+
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-];
-const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
-
 export async function POST(request: Request): Promise<NextResponse> {
-  try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+  // 1. Dapatkan FormData dari request
+  const formData = await request.formData();
 
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-    }
+  // 2. Ambil semua file dari field 'images'
+  //    Kita gunakan `getAll` karena frontend mengirim multiple files
+  const files = formData.getAll("images") as File[];
 
-    console.log("File details:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
-
-    // Validasi ukuran file
-    if (file.size === 0) {
-      return NextResponse.json(
-        { error: "File kosong atau rusak" },
-        { status: 400 }
-      );
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File terlalu besar. Maksimal 5MB." },
-        { status: 400 }
-      );
-    }
-
-    // Validasi tipe file - lebih permisif
-    const isImageFile =
-      ALLOWED_IMAGE_TYPES.includes(file.type) || file.type.startsWith("image/");
-    const isDocumentFile = ALLOWED_DOCUMENT_TYPES.includes(file.type);
-
-    if (!isImageFile && !isDocumentFile) {
-      return NextResponse.json(
-        {
-          error: `Tipe file tidak didukung: ${file.type}. Gunakan JPG, PNG, WEBP, atau PDF.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Generate nama file unik
-    const fileExtension = file.name.split(".").pop() || "bin";
-    const uniqueFilename = `${file.name.split(".")[0]}-${nanoid(
-      8
-    )}.${fileExtension}`;
-
-    console.log("Uploading file:", uniqueFilename);
-
-    // Upload ke Vercel Blob
-    const blob = await put(uniqueFilename, file, {
-      access: "public",
-    });
-
-    console.log("Upload success:", blob.url);
-
-    return NextResponse.json({
-      message: "File berhasil diupload",
-      url: blob.url,
-      fileName: uniqueFilename,
-      size: file.size,
-      type: file.type,
-    });
-  } catch (error) {
-    console.error("Error uploading file:", error);
+  // 3. Validasi dasar: Cek jika ada file yang dikirim
+  if (files.length === 0) {
     return NextResponse.json(
-      {
-        error: `Gagal mengupload file: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      },
+      { error: "Tidak ada file yang diupload." },
+      { status: 400 }
+    );
+  }
+
+  // Bungkus logika upload dalam try-catch untuk penanganan error yang baik
+  try {
+    // 4. Buat array untuk menampung semua promise upload
+    const uploadPromises = files.map((file) => {
+      // Membuat nama file yang unik untuk menghindari konflik/overwrite
+      // Format: [nama-file-asli]-[id-unik].[ekstensi]
+      const uniqueFilename = `${file.name.split(".")[0]}-${nanoid(
+        8
+      )}.${file.name.split(".").pop()}`;
+
+      // 5. Panggil fungsi `put` dari @vercel/blob
+      //    - Parameter pertama: nama file di blob storage (kita pakai yang unik)
+      //    - Parameter kedua: konten file itu sendiri
+      //    - Parameter ketiga (options):
+      //      - `access: 'public'`: Agar file bisa diakses secara publik lewat URL
+      //      - `token`: SDK secara otomatis akan membaca BLOB_READ_WRITE_TOKEN dari .env
+      return put(uniqueFilename, file, {
+        access: "public",
+      });
+    });
+
+    // 6. Tunggu semua proses upload selesai secara paralel
+    const blobs = await Promise.all(uploadPromises);
+
+    // 7. Ekstrak URL dari setiap hasil upload
+    const urls = blobs.map((blob) => blob.url);
+
+    // 8. Kirim kembali response sukses dengan array URL
+    return NextResponse.json({ urls });
+  } catch (error) {
+    // Jika terjadi error saat proses upload
+    console.error("Error uploading files to Vercel Blob:", error);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan saat mengupload file." },
       { status: 500 }
     );
   }

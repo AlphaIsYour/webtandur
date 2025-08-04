@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Providers from "@/components/providers";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import ProfileViewTracker from "@/components/ProfileViewTracker";
 
 const getPetaniData = async (username: string) => {
   try {
@@ -74,6 +75,7 @@ export default async function ProfilPetaniPage({
       <Providers>
         <Navbar />
       </Providers>
+      <ProfileViewTracker petaniId={petani.id} />
       <FarmerPortfolio petani={petani} />{" "}
     </>
   );

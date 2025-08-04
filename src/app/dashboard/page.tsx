@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/page.tsx
+// src/app/dashboard/page.tsx
 "use client";
 import { Leaf, Package, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,7 +26,11 @@ const StatCard = ({ title, value, icon: Icon, colorClass }: any) => (
 
 export default function DashboardOverviewPage() {
   const [proyek, setProyek] = useState<ProyekWithFaseGambar[]>([]);
-  const [stats, setStats] = useState({ proyekAktif: 0, totalProduk: 0 });
+  const [stats, setStats] = useState({
+    proyekAktif: 0,
+    totalProduk: 0,
+    pengunjungProfil: 0,
+  });
   const [aktivitasTerbaru, setAktivitasTerbaru] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,28 +38,34 @@ export default function DashboardOverviewPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/proyek?include=fase");
-      if (!res.ok) throw new Error("Gagal mengambil data");
+      // Fetch proyek data
+      const proyekRes = await fetch("/api/proyek?include=fase");
+      if (!proyekRes.ok) throw new Error("Gagal mengambil data proyek");
+      const proyekData = await proyekRes.json();
 
-      const data = await res.json();
+      // Fetch dashboard stats
+      const statsRes = await fetch("/api/dashboard/stats");
+      if (!statsRes.ok) throw new Error("Gagal mengambil statistik");
+      const statsData = await statsRes.json();
 
-      const proyekData =
-        data.data?.map((p: any) => ({
+      const formattedProyek =
+        proyekData.data?.map((p: any) => ({
           ...p,
           fase: p.fase || [],
         })) || [];
 
-      setProyek(proyekData);
+      setProyek(formattedProyek);
       setStats({
-        proyekAktif:
-          proyekData.filter((p: any) => p.status !== "SELESAI").length || 0,
-        totalProduk: 0,
+        proyekAktif: statsData.proyekAktif || 0,
+        totalProduk: statsData.totalProduk || 0,
+        pengunjungProfil: statsData.pengunjungProfil || 0,
       });
-      setAktivitasTerbaru([]);
+      setAktivitasTerbaru(statsData.aktivitasTerbaru || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       setProyek([]);
-      setStats({ proyekAktif: 0, totalProduk: 0 });
+      setStats({ proyekAktif: 0, totalProduk: 0, pengunjungProfil: 0 });
+      setAktivitasTerbaru([]);
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +108,7 @@ export default function DashboardOverviewPage() {
             colorClass="bg-sky-500"
           />
           <StatCard
-            title="Pengunjung Profil (30 hari)"
+            title="Pengunjung Profil (7 hari)"
             value="-"
             icon={BarChart3}
             colorClass="bg-amber-500"

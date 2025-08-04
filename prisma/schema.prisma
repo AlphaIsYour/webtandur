@@ -28,6 +28,19 @@ model Account {
   @@index([userId])
 }
 
+model ProfileView {
+  id        String   @id @default(cuid())
+  petaniId  String
+  viewerId  String?  // null jika guest
+  createdAt DateTime @default(now())
+  petani    User     @relation("ProfileViews", fields: [petaniId], references: [id])
+  viewer    User?    @relation("ViewedProfiles", fields: [viewerId], references: [id])
+  
+  @@index([petaniId])
+  @@index([createdAt])
+  @@index([viewerId])
+}
+
 model CsMessage {
   id         String   @id @default(cuid())
   message    String
@@ -86,6 +99,8 @@ model User {
   csMessages CsMessage[]
   petaniApplications  PetaniApplication[]
   reviewedApplications PetaniApplication[] @relation("ApplicationReviewer")
+  profileViews    ProfileView[] @relation("ProfileViews")
+viewedProfiles  ProfileView[] @relation("ViewedProfiles")
 }
 
 model PetaniApplication {

@@ -18,7 +18,7 @@ interface DisplayProyekOverviewProps {
 const KartuProyekOverview = ({ proyek }: { proyek: ProyekWithFaseGambar }) => {
   // Logika untuk mendapatkan satu gambar pratinjau
   const getPreviewImage = () => {
-    const defaultImage = "/proyek/1.jpg";
+    const defaultImage = "/images/placeholder-proyek.svg"; // Gambar default jika tidak ada
 
     // Cek jika proyek punya fase dan fase pertama punya gambar
     if (
@@ -45,7 +45,7 @@ const KartuProyekOverview = ({ proyek }: { proyek: ProyekWithFaseGambar }) => {
             alt={proyek.namaProyek}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              e.currentTarget.src = "/proyek/1.jpg";
+              e.currentTarget.src = "/images/placeholder-proyek.svg"; // Ganti dengan gambar default jika gagal
             }}
           />
         </div>

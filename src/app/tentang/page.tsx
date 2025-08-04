@@ -6,9 +6,9 @@ import { Target, Users, Heart } from "lucide-react";
 export default function AboutPage() {
   return (
     <>
-    <Providers>
-      <Navbar />
-    </Providers>
+      <Providers>
+        <Navbar />
+      </Providers>
       <div className="max-w-6xl mx-auto px-4 py-12 mt-16">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -195,7 +195,7 @@ export default function AboutPage() {
           </p>
           <div className="flex justify-center gap-4">
             <a
-              href="/sign-in"
+              href="/daftar-petani"
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium"
             >
               Daftar sebagai Petani
@@ -209,7 +209,6 @@ export default function AboutPage() {
           </div>
         </section>
       </div>
-      <Footer />
     </>
   );
 }

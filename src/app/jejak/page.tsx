@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 type FarmingUpdate = {
   id: string;
@@ -89,6 +89,17 @@ function CreateUpdateModal({
     }
   }, [isOpen, session]);
 
+  // Cleanup object URLs when component unmounts or images change
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((url) => {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [imagePreviews]);
+
   const fetchUserProjects = async () => {
     try {
       const response = await fetch("/api/user/projects");
@@ -106,21 +117,66 @@ function CreateUpdateModal({
       return;
     }
 
+    // Validate file size (5MB max)
+    const invalidFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    if (invalidFiles.length > 0) {
+      toast.error("Beberapa file terlalu besar. Maksimal 5MB per file.");
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const invalidTypes = files.filter(
+      (file) => !validTypes.includes(file.type)
+    );
+    if (invalidTypes.length > 0) {
+      toast.error("Hanya file JPG, PNG, dan WEBP yang diizinkan.");
+      return;
+    }
+
     setImages((prev) => [...prev, ...files]);
 
-    // Create previews
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviews((prev) => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    // Create object URLs for preview (more reliable than FileReader)
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const removeImage = (index: number) => {
+    // Revoke object URL to prevent memory leaks
+    const urlToRevoke = imagePreviews[index];
+    if (urlToRevoke && urlToRevoke.startsWith("blob:")) {
+      URL.revokeObjectURL(urlToRevoke);
+    }
+
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    const uploadPromises = files.map(async (file) => {
+      // Validasi ukuran di frontend
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(`File ${file.name} terlalu besar. Maksimal 5MB.`);
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Upload gagal untuk ${file.name}`);
+      }
+
+      return result.url;
+    });
+
+    return Promise.all(uploadPromises);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,19 +187,26 @@ function CreateUpdateModal({
     }
 
     setSubmitting(true);
-    const formData = new FormData();
-    formData.append("proyekTaniId", selectedProject);
-    formData.append("judul", judul);
-    formData.append("deskripsi", deskripsi);
-
-    images.forEach((image, index) => {
-      formData.append(`images`, image);
-    });
 
     try {
-      const response = await fetch("/api/farming-update", {
+      // Upload images first
+      let uploadedImageUrls: string[] = [];
+      if (images.length > 0) {
+        uploadedImageUrls = await uploadFiles(images);
+      }
+
+      // Submit form data
+      const response = await fetch("/api/farming-updatee", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          proyekTaniId: selectedProject,
+          judul: judul.trim() || null,
+          deskripsi: deskripsi.trim(),
+          fotoUrl: uploadedImageUrls,
+        }),
       });
 
       if (response.ok) {
@@ -155,14 +218,21 @@ function CreateUpdateModal({
         const error = await response.json();
         toast.error(error.message || "Gagal memposting update");
       }
-    } catch (error) {
-      toast.error("Terjadi kesalahan saat memposting");
+    } catch (error: any) {
+      toast.error(error.message || "Terjadi kesalahan saat memposting");
     } finally {
       setSubmitting(false);
     }
   };
 
   const resetForm = () => {
+    // Cleanup object URLs
+    imagePreviews.forEach((url) => {
+      if (url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
+    });
+
     setSelectedProject("");
     setJudul("");
     setDeskripsi("");
@@ -178,7 +248,10 @@ function CreateUpdateModal({
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold">Buat Update Baru</h3>
           <button
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              resetForm();
+            }}
             className="text-gray-500 hover:text-gray-700"
           >
             <X className="w-5 h-5" />
@@ -263,7 +336,7 @@ function CreateUpdateModal({
                   </div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                     multiple
                     onChange={handleImageChange}
                     className="hidden"
@@ -277,13 +350,126 @@ function CreateUpdateModal({
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                resetForm();
+              }}
               className="flex-1"
             >
               Batal
             </Button>
             <Button type="submit" disabled={submitting} className="flex-1">
               {submitting ? "Memposting..." : "Posting"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditUpdateModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  update,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  update: FarmingUpdate | null;
+}) {
+  const [judul, setJudul] = useState("");
+  const [deskripsi, setDeskripsi] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (update) {
+      setJudul(update.judul || "");
+      setDeskripsi(update.deskripsi);
+    }
+  }, [update]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!update || !deskripsi.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/farming-updatee/${update.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          judul: judul.trim() || null,
+          deskripsi: deskripsi.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Update berhasil diperbarui!");
+        onSuccess();
+        onClose();
+      } else {
+        toast.error("Gagal memperbarui update");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen || !update) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="text-lg font-semibold">Edit Update</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Judul (Opsional)
+            </label>
+            <input
+              type="text"
+              value={judul}
+              onChange={(e) => setJudul(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deskripsi
+            </label>
+            <Textarea
+              value={deskripsi}
+              onChange={(e) => setDeskripsi(e.target.value)}
+              className="w-full min-h-[100px]"
+              required
+            />
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button type="submit" disabled={submitting} className="flex-1">
+              {submitting ? "Menyimpan..." : "Simpan"}
             </Button>
           </div>
         </form>
@@ -304,11 +490,27 @@ export default function JejakTaniFeed() {
   >({});
   const [liking, setLiking] = useState<Record<string, boolean>>({});
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [editingUpdate, setEditingUpdate] = useState<FarmingUpdate | null>(
+    null
+  );
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [updateToDelete, setUpdateToDelete] = useState<string | null>(null);
 
   // Fetch farming updates
   useEffect(() => {
     fetchUpdates();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setDropdownOpen(null);
+    if (dropdownOpen) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [dropdownOpen]);
 
   const fetchUpdates = async () => {
     try {
@@ -320,6 +522,41 @@ export default function JejakTaniFeed() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Delete update function
+  const deleteUpdate = async (updateId: string) => {
+    try {
+      const response = await fetch(`/api/farming-updatee/${updateId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setUpdates((prev) => prev.filter((update) => update.id !== updateId));
+        toast.success("Postingan berhasil dihapus");
+      } else {
+        toast.error("Gagal menghapus postingan");
+      }
+    } catch (error) {
+      toast.error("Terjadi kesalahan");
+    }
+    setShowDeleteModal(false);
+    setUpdateToDelete(null);
+    setDropdownOpen(null);
+  };
+
+  // Show delete confirmation
+  const showDeleteConfirmation = (updateId: string) => {
+    setUpdateToDelete(updateId);
+    setShowDeleteModal(true);
+    setDropdownOpen(null);
+  };
+
+  // Open edit modal function
+  const openEditModal = (update: FarmingUpdate) => {
+    setEditingUpdate(update);
+    setShowEditModal(true);
+    setDropdownOpen(null);
   };
 
   // Toggle like on a farming update
@@ -530,11 +767,88 @@ export default function JejakTaniFeed() {
 
   return (
     <div className="relative">
+      {/* Toast Container */}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#363636",
+            color: "#fff",
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            duration: 4000,
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
+
       {/* Create Update Modal */}
       <CreateUpdateModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={fetchUpdates}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <X className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Hapus Postingan
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Yakin ingin menghapus postingan ini? Tindakan ini tidak dapat
+                dibatalkan.
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setUpdateToDelete(null);
+                  }}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => updateToDelete && deleteUpdate(updateToDelete)}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  Hapus
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Update Modal */}
+      <EditUpdateModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingUpdate(null);
+        }}
+        onSuccess={fetchUpdates}
+        update={editingUpdate}
       />
 
       <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
@@ -585,9 +899,40 @@ export default function JejakTaniFeed() {
                     </p>
                   </div>
                 </Link>
-                <button className="text-gray-500 hover:text-gray-700 p-1">
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
+
+                {/* Menu dropdown hanya untuk pemilik postingan */}
+                {session?.user.id === update.proyekTani.petani.id && (
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDropdownOpen(
+                          dropdownOpen === update.id ? null : update.id
+                        );
+                      }}
+                      className="text-gray-500 hover:text-gray-700 p-1"
+                    >
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+
+                    {dropdownOpen === update.id && (
+                      <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <button
+                          onClick={() => openEditModal(update)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2"
+                        >
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => showDeleteConfirmation(update.id)}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                        >
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Project link */}

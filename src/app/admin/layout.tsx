@@ -37,7 +37,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+          className="fixed inset-0 bg-black/40 bg-opacity-50 z-10 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

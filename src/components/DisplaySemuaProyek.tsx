@@ -36,11 +36,11 @@ const KartuProyekPratinjau = ({ proyek }: { proyek: ProyekWithFaseGambar }) => {
 
     // 2. Siapkan gambar default sebagai fallback
     const defaultImages = [
-      "/proyek/1.jpg",
-      "/proyek/2.jpg",
-      "/proyek/3.jpg",
-      "/proyek/4.jpg",
-      "/proyek/5.jpg",
+      "/images/placeholder-proyek.svg",
+      "/images/placeholder-proyek.svg",
+      "/images/placeholder-proyek.svg",
+      "/images/placeholder-proyek.svg",
+      "/images/placeholder-proyek.svg",
     ];
 
     // 3. Gabungkan gambar proyek dengan gambar default, dan ambil 5 yang pertama.
@@ -85,7 +85,7 @@ const KartuProyekPratinjau = ({ proyek }: { proyek: ProyekWithFaseGambar }) => {
                 alt={`${proyek.namaProyek} - Gambar 1`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => {
-                  e.currentTarget.src = "/proyek/1.jpg";
+                  e.currentTarget.src = "/images/placeholder-proyek.svg"; // Ganti dengan gambar default jika gagal
                 }}
               />
             </div>
@@ -96,7 +96,7 @@ const KartuProyekPratinjau = ({ proyek }: { proyek: ProyekWithFaseGambar }) => {
                 alt={`${proyek.namaProyek} - Gambar 2`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => {
-                  e.currentTarget.src = "/proyek/2.jpg";
+                  e.currentTarget.src = "/iamges/placeholder-proyek.svg"; // Ganti dengan gambar default jika gagal
                 }}
               />
             </div>

@@ -103,6 +103,11 @@ export default function DaftarPetaniPage() {
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file) => {
+      // Validasi ukuran di frontend
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(`File ${file.name} terlalu besar. Maksimal 5MB.`);
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -111,11 +116,12 @@ export default function DaftarPetaniPage() {
         body: formData,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error("Upload failed");
+        throw new Error(result.error || `Upload gagal untuk ${file.name}`);
       }
 
-      const result = await response.json();
       return result.url;
     });
 
@@ -203,10 +209,10 @@ export default function DaftarPetaniPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push("/")}
             className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
           >
-            Kembali ke Dashboard
+            Kembali ke Halaman Utama
           </button>
         </div>
       </div>

@@ -299,7 +299,7 @@ export default function LiveChat() {
       {/* Backdrop for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-25 z-[55] md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/40 bg-opacity-25 z-[55] md:hidden transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}

@@ -193,7 +193,7 @@ export default function PengaturanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:mt-20 mt-10">
+    <div className="min-h-screen bg-gray-50 py-8 sm:mt-20 mt-15">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {/* Header */}
@@ -222,7 +222,7 @@ export default function PengaturanPage() {
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="font-medium">{label}</span>
+                  <span className="text-[13px] sm:font-medium">{label}</span>
                 </button>
               ))}
             </nav>

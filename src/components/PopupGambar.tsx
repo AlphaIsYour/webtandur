@@ -24,7 +24,7 @@ const PopupGambar = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 animate-fade-in"
+      className="fixed inset-0 bg-black/40 bg-opacity-90 flex justify-center items-center z-50 animate-fade-in"
       onClick={onClose}
     >
       {/* Tombol Close */}

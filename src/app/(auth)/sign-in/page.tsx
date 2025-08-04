@@ -47,7 +47,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-slate-50">
+    <div className="relative flex min-h-screen w-full flex-col mt-20 items-center justify-center bg-slate-50">
       <Navbar />
       {/* Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-5">
@@ -60,7 +60,7 @@ export default function SignInPage() {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-md p-4">
+      <div className="relative z-10 w-full max-w-xl p-4">
         <Card className="shadow-lg bg-white border-slate-200">
           <CardHeader className="text-center space-y-2">
             <Link href="/" className="inline-block mx-auto">
@@ -89,7 +89,7 @@ export default function SignInPage() {
               <p className="text-slate-600">
                 Belum punya akun?{" "}
                 <Link
-                  href="/register"
+                  href="/sign-up"
                   className="font-semibold text-green-600 hover:text-green-700 hover:underline transition-colors"
                 >
                   Daftar Gratis

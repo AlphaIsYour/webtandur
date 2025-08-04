@@ -177,7 +177,7 @@ async function getRelevantData(intent: string, message: string) {
         data.products = await prisma.produk.findMany({
           where: {
             createdAt: {
-              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 hari terakhir
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 30 hari terakhir
             },
           },
           take: 6,

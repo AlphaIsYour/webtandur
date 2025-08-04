@@ -20,7 +20,20 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
+    console.log("File details:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+
     // Validasi ukuran file
+    if (file.size === 0) {
+      return NextResponse.json(
+        { error: "File kosong atau rusak" },
+        { status: 400 }
+      );
+    }
+
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File terlalu besar. Maksimal 5MB." },
@@ -28,28 +41,34 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    // Validasi tipe file
-    const isImageFile = ALLOWED_IMAGE_TYPES.includes(file.type);
+    // Validasi tipe file - lebih permisif
+    const isImageFile =
+      ALLOWED_IMAGE_TYPES.includes(file.type) || file.type.startsWith("image/");
     const isDocumentFile = ALLOWED_DOCUMENT_TYPES.includes(file.type);
 
     if (!isImageFile && !isDocumentFile) {
       return NextResponse.json(
         {
-          error: "Tipe file tidak didukung. Gunakan JPG, PNG, WEBP, atau PDF.",
+          error: `Tipe file tidak didukung: ${file.type}. Gunakan JPG, PNG, WEBP, atau PDF.`,
         },
         { status: 400 }
       );
     }
 
     // Generate nama file unik
-    const uniqueFilename = `${file.name.split(".")[0]}-${nanoid(8)}.${file.name
-      .split(".")
-      .pop()}`;
+    const fileExtension = file.name.split(".").pop() || "bin";
+    const uniqueFilename = `${file.name.split(".")[0]}-${nanoid(
+      8
+    )}.${fileExtension}`;
+
+    console.log("Uploading file:", uniqueFilename);
 
     // Upload ke Vercel Blob
     const blob = await put(uniqueFilename, file, {
       access: "public",
     });
+
+    console.log("Upload success:", blob.url);
 
     return NextResponse.json({
       message: "File berhasil diupload",
@@ -61,7 +80,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     console.error("Error uploading file:", error);
     return NextResponse.json(
-      { error: "Gagal mengupload file" },
+      {
+        error: `Gagal mengupload file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      },
       { status: 500 }
     );
   }

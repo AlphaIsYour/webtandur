@@ -2,15 +2,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { StatusProduk } from "@prisma/client";
 import { ArrowLeft, Save, Trash2, Upload, X } from "lucide-react";
 import FileDropzone from "@/components/FileDropzone";
+import toast from "react-hot-toast";
 
-const EditProdukPage = () => {
+const EditProdukPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const router = useRouter();
-  const params = useParams();
-  const productId = params.id as string;
+  const [productId, setProductId] = useState<string>("");
 
   const [formData, setFormData] = useState({
     namaProduk: "",
@@ -25,6 +25,14 @@ const EditProdukPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const initParams = async () => {
+      const resolvedParams = await params;
+      setProductId(resolvedParams.id);
+    };
+    initParams();
+  }, [params]);
 
   useEffect(() => {
     if (!productId) return;
@@ -42,7 +50,7 @@ const EditProdukPage = () => {
         });
       } catch (error) {
         console.error(error);
-        alert("Gagal memuat data produk.");
+        toast.error("Gagal memuat data produk");
         router.push("/dashboard/produk");
       } finally {
         setLoading(false);
@@ -65,19 +73,27 @@ const EditProdukPage = () => {
   };
 
   const handleImageUpload = async (files: FileList) => {
-    /* Logic sama seperti halaman tambah */
     const uploadData = new FormData();
     Array.from(files).forEach((file) => uploadData.append("images", file));
+
+    const uploadPromise = fetch("/api/upload", {
+      method: "POST",
+      body: uploadData,
+    });
+
+    toast.promise(uploadPromise, {
+      loading: "Uploading gambar...",
+      success: "Gambar berhasil diupload!",
+      error: "Gagal upload gambar",
+    });
+
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadData,
-      });
+      const res = await uploadPromise;
       if (!res.ok) throw new Error("Upload gagal");
       const { urls } = await res.json();
       setFormData((prev) => ({ ...prev, fotoUrl: [...prev.fotoUrl, ...urls] }));
     } catch (error) {
-      alert("Gagal upload gambar.");
+      console.error(error);
     }
   };
 
@@ -91,40 +107,89 @@ const EditProdukPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const updatePromise = fetch(`/api/produk/${productId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    toast.promise(updatePromise, {
+      loading: "Memperbarui produk...",
+      success: "Produk berhasil diperbarui!",
+      error: "Gagal memperbarui produk",
+    });
+
     try {
-      const res = await fetch(`/api/produk/${productId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const res = await updatePromise;
       if (!res.ok) throw new Error("Gagal memperbarui produk");
-      alert("Produk berhasil diperbarui!");
       router.push("/dashboard/produk");
     } catch (error) {
       console.error(error);
-      alert("Error: Gagal memperbarui produk");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (
-      !confirm("Apakah Anda yakin ingin menghapus produk ini secara permanen?")
-    )
-      return;
+    const confirmDelete = await new Promise<boolean>((resolve) => {
+      toast(
+        (t) => (
+          <div className="flex flex-col gap-2">
+            <p className="font-medium">Yakin ingin menghapus produk ini?</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(false);
+                }}
+                className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(true);
+                }}
+                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        ),
+        { duration: Infinity }
+      );
+    });
+
+    if (!confirmDelete) return;
+
+    const deletePromise = fetch(`/api/produk/${productId}`, {
+      method: "DELETE",
+    });
+
+    toast.promise(deletePromise, {
+      loading: "Menghapus produk...",
+      success: "Produk berhasil dihapus!",
+      error: "Gagal menghapus produk",
+    });
+
     try {
-      const res = await fetch(`/api/produk/${productId}`, { method: "DELETE" });
+      const res = await deletePromise;
       if (!res.ok) throw new Error("Gagal menghapus produk");
-      alert("Produk berhasil dihapus.");
       router.push("/dashboard/produk");
     } catch (error) {
-      alert("Gagal menghapus produk.");
+      console.error(error);
     }
   };
 
   if (loading)
-    return <div className="text-center py-10">Memuat data produk...</div>;
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
@@ -158,7 +223,7 @@ const EditProdukPage = () => {
         </div>
       </div>
 
-      {/* Form Fields (Sama seperti halaman tambah) */}
+      {/* Form Fields */}
       <div className="bg-white p-6 border rounded-xl space-y-4">
         <div>
           <label className="block text-sm font-medium">Nama Produk*</label>
@@ -247,10 +312,7 @@ const EditProdukPage = () => {
         </div>
         <div>
           <label className="block text-sm font-medium">Foto Produk</label>
-          <FileDropzone
-            onFilesDrop={handleImageUpload}
-            id="file-upload"
-          />
+          <FileDropzone onFilesDrop={handleImageUpload} id="file-upload" />
           <p className="text-sm text-gray-500 mt-1">
             Upload gambar produk (maksimal 5 gambar).
           </p>

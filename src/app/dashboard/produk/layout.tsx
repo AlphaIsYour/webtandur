@@ -1,7 +1,7 @@
 // src/app/dashboard/produk/layout.tsx
 
 import React from "react";
-
+import { Toaster } from "react-hot-toast";
 // Layout sederhana untuk memberikan padding yang konsisten
 export default function ProdukLayout({
   children,
@@ -11,6 +11,7 @@ export default function ProdukLayout({
   return (
     <div className="container mx-auto px-4 py-6 md:px-6 md:py-8">
       {children}
+      <Toaster position="top-center" />
     </div>
   );
 }

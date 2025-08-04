@@ -233,7 +233,7 @@ const DisplayProyek = ({ proyek, onClose }: DisplayProyekProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-40 overflow-y-auto">
+    <div className="fixed inset-0 bg-white z-40 overflow-y-auto mt-15 sm:mt-20">
       <div className="container mx-auto px-4 py-6">
         {/* Header dengan Tombol Close dan Judul */}
         <div className="sticky top-0 bg-white/90 backdrop-blur-sm py-4 mb-6 z-10 flex items-center border-b">

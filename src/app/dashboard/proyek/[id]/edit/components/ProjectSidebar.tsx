@@ -31,14 +31,14 @@ export const ProjectSidebar = ({
         <h3 className="text-lg font-semibold mb-4">Aksi Cepat</h3>
         <div className="space-y-3">
           <button
-            onClick={() => router.push(`/dashboard/proyek/${proyekId}`)}
+            onClick={() => router.push(`/proyek/${proyekId}`)}
             className="w-full p-3 text-left border rounded-lg hover:bg-gray-50 flex items-center gap-3"
           >
             <Eye size={16} className="text-gray-600" />
             <span>Lihat Halaman Proyek</span>
           </button>
           <button
-            onClick={() => router.push(`/dashboard/proyek/${proyekId}/produk`)}
+            onClick={() => router.push(`/dashboard/produk`)}
             className="w-full p-3 text-left border rounded-lg hover:bg-gray-50 flex items-center gap-3"
           >
             <Plus size={16} className="text-gray-600" />

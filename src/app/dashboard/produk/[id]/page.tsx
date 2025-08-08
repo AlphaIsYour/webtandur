@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation"; // Diimpor useParams
 import { Edit, Trash2, Calendar, MapPin, Package } from "lucide-react";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
@@ -28,16 +28,14 @@ interface Product {
   proyekTani?: ProyekTani;
 }
 
-export default function ProductDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ProductDetailPage() {
+  // Hapus props 'params'
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
-  const { id } = params; // Ambil id langsung dari params
+  const params = useParams(); // Gunakan hook useParams
+  const id = params.id as string; // Ambil id dari hook
 
   useEffect(() => {
     if (!id) return;

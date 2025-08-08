@@ -381,19 +381,34 @@ const EditProyekPage = () => {
   };
 
   const handleImageUpload = async (files: FileList): Promise<string[]> => {
-    const uploadFormData = new FormData();
-    Array.from(files).forEach((file) => uploadFormData.append("images", file));
-    try {
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const formData = new FormData();
+      formData.append("file", file); // API expects a single 'file'
+
       const response = await fetch("/api/upload", {
         method: "POST",
-        body: uploadFormData,
+        body: formData,
       });
-      if (!response.ok) throw new Error("Gagal upload gambar");
-      const { urls } = await response.json();
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Gagal mengupload gambar.");
+      }
+
+      const result = await response.json();
+      return result.url; // API returns a single 'url'
+    });
+
+    try {
+      const urls = await Promise.all(uploadPromises);
       return urls;
     } catch (error) {
       console.error("Error uploading images:", error);
-      toast.error("Gagal upload gambar");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Satu atau lebih gambar gagal diupload."
+      );
       return [];
     }
   };

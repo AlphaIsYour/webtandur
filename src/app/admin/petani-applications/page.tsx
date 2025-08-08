@@ -431,7 +431,7 @@ export default function AdminPetaniApplicationsPage() {
                     </p>
                     <p>
                       <span className="font-medium">Email:</span>{" "}
-                      {selectedApp.user.email}
+                      {selectedApp.user?.email || "N/A"}
                     </p>
                     <p>
                       <span className="font-medium">Lokasi:</span>{" "}

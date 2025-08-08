@@ -5,39 +5,57 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, Calendar, MapPin, Package } from "lucide-react";
 import Image from "next/image";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
+
+// Definisikan tipe data untuk kejelasan
+interface Petani {
+  name: string;
+  lokasi: string;
+}
+interface ProyekTani {
+  petani: Petani;
+}
+interface Product {
+  id: string;
+  namaProduk: string;
+  deskripsi: string;
+  harga: number;
+  stokTersedia: number;
+  unit: string;
+  status: "TERSEDIA" | "PREORDER" | "HABIS";
+  estimasiPanen?: string | null;
+  fotoUrl: string[];
+  proyekTani?: ProyekTani;
+}
 
 export default function ProductDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [productId, setProductId] = useState<string>("");
   const router = useRouter();
+  const { id } = params; // Ambil id langsung dari params
 
   useEffect(() => {
-    const initParams = async () => {
-      const resolvedParams = await params;
-      setProductId(resolvedParams.id);
-    };
-    initParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (!productId) return;
+    if (!id) return;
 
     const fetchProduct = async () => {
+      setLoading(true);
       try {
-        const response = await fetch(`/api/produk/${productId}`);
-        if (!response.ok) throw new Error("Produk tidak ditemukan");
+        const response = await fetch(`/api/produk/${id}`);
+        if (!response.ok) {
+          throw new Error("Produk tidak ditemukan atau gagal dimuat");
+        }
         const data = await response.json();
         setProduct(data);
       } catch (error) {
-        console.error("Error:", error);
-        toast.error("Produk tidak ditemukan");
+        console.error("Error fetching product:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Produk tidak ditemukan"
+        );
         router.push("/dashboard/produk");
       } finally {
         setLoading(false);
@@ -45,66 +63,64 @@ export default function ProductDetailPage({
     };
 
     fetchProduct();
-  }, [productId, router]);
+  }, [id, router]);
 
-  const handleDelete = async () => {
-    const confirmDelete = await new Promise<boolean>((resolve) => {
-      toast(
-        (t) => (
-          <div className="flex flex-col gap-2">
-            <p className="font-medium">Yakin ingin menghapus produk ini?</p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  resolve(false);
-                }}
-                className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  resolve(true);
-                }}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Hapus
-              </button>
-            </div>
+  const handleDelete = () => {
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-2">
+          <p className="font-medium">Yakin ingin menghapus produk ini?</p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                confirmDelete();
+              }}
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Hapus
+            </button>
           </div>
-        ),
-        { duration: Infinity }
-      );
-    });
+        </div>
+      ),
+      { duration: 10000 }
+    );
+  };
 
-    if (!confirmDelete) return;
-
+  const confirmDelete = async () => {
+    if (deleting) return;
     setDeleting(true);
-    const deletePromise = fetch(`/api/produk/${productId}`, {
+
+    const deletePromise = fetch(`/api/produk/${id}`, {
       method: "DELETE",
     });
 
     toast.promise(deletePromise, {
       loading: "Menghapus produk...",
-      success: "Produk berhasil dihapus!",
-      error: "Gagal menghapus produk",
+      success: () => {
+        router.push("/dashboard/produk");
+        return "Produk berhasil dihapus!";
+      },
+      error: "Gagal menghapus produk.",
     });
 
     try {
-      const response = await deletePromise;
-      if (!response.ok) throw new Error("Gagal menghapus produk");
-      router.push("/dashboard/produk");
+      await deletePromise;
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error deleting product:", error);
     } finally {
       setDeleting(false);
     }
   };
 
   const handleEdit = () => {
-    router.push(`/dashboard/produk/${productId}/edit`);
+    router.push(`/dashboard/produk/${id}/edit`);
   };
 
   if (loading) {
@@ -115,10 +131,17 @@ export default function ProductDetailPage({
     );
   }
 
-  if (!product) return null;
+  if (!product) {
+    return (
+      <div className="text-center py-20">
+        <p>Produk tidak dapat ditemukan.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4">
+      <Toaster position="top-center" />
       {/* Header dengan tombol aksi */}
       <div className="flex justify-between items-start mb-6">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -144,24 +167,23 @@ export default function ProductDetailPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Gambar Produk */}
-        <div className="aspect-square relative rounded-xl overflow-hidden bg-gray-100">
-          {product.fotoUrl && product.fotoUrl.length > 0 ? (
-            <Image
-              src={
-                Array.isArray(product.fotoUrl)
-                  ? product.fotoUrl[0]
-                  : product.fotoUrl
-              }
-              alt={product.namaProduk}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Package size={64} className="text-gray-400" />
-            </div>
-          )}
+        {/* Galeri Gambar Produk */}
+        <div className="space-y-4">
+          <div className="aspect-square relative rounded-xl overflow-hidden bg-gray-100">
+            {product.fotoUrl && product.fotoUrl.length > 0 ? (
+              <Image
+                src={product.fotoUrl[0]}
+                alt={product.namaProduk}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <Package size={64} className="text-gray-400" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Detail Produk */}
@@ -171,7 +193,7 @@ export default function ProductDetailPage({
               Deskripsi
             </h2>
             <p className="text-gray-600">
-              {product.deskripsi || "Tidak ada deskripsi"}
+              {product.deskripsi || "Tidak ada deskripsi."}
             </p>
           </div>
 
@@ -179,7 +201,7 @@ export default function ProductDetailPage({
             <div>
               <span className="text-sm text-gray-500">Harga</span>
               <p className="text-2xl font-bold text-green-600">
-                Rp {product.harga.toLocaleString("id-ID")}
+                Rp {product.harga?.toLocaleString("id-ID") ?? 0}
               </p>
             </div>
             <div>
@@ -196,7 +218,9 @@ export default function ProductDetailPage({
               className={`inline-block px-3 py-1 rounded-full text-sm font-medium ml-2 ${
                 product.status === "TERSEDIA"
                   ? "bg-green-100 text-green-800"
-                  : "bg-yellow-100 text-yellow-800"
+                  : product.status === "PREORDER"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
               }`}
             >
               {product.status}
@@ -208,25 +232,34 @@ export default function ProductDetailPage({
               <Calendar size={16} className="text-gray-500" />
               <span className="text-sm text-gray-500">Estimasi Panen:</span>
               <span>
-                {new Date(product.estimasiPanen).toLocaleDateString("id-ID")}
+                {new Date(product.estimasiPanen).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </span>
             </div>
           )}
 
-          <div className="border-t pt-4">
-            <h3 className="font-semibold text-gray-800 mb-2">
-              Informasi Petani
-            </h3>
-            <div className="space-y-2">
-              <p className="text-gray-600">{product.proyekTani.petani.name}</p>
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-gray-500" />
-                <span className="text-gray-600">
-                  {product.proyekTani.petani.lokasi}
-                </span>
+          {product.proyekTani && (
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-800 mb-2">
+                Informasi Petani
+              </h3>
+              <div className="space-y-2">
+                <p className="text-gray-600">
+                  {product.proyekTani.petani?.name ?? "Nama tidak tersedia"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-gray-500" />
+                  <span className="text-gray-600">
+                    {product.proyekTani.petani?.lokasi ??
+                      "Lokasi tidak tersedia"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

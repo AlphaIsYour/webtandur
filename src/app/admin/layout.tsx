@@ -10,15 +10,20 @@ import {
   Menu,
   X,
   BookOpen,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
+import { AdminProtection } from "@/components/AdminProtection";
+import { useAuth } from "@/hooks/useAuth";
+import { signOut } from "next-auth/react";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const AdminLayout = ({ children }: AdminLayoutProps) => {
+const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const menuItems = [
     { href: "/admin", icon: BarChart3, label: "Dashboard" },
@@ -31,6 +36,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { href: "/admin/users", icon: Users, label: "Petani" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
+
+  const handleLogout = async () => {
+    await signOut({
+      callbackUrl: "/",
+    });
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50 mt-20">
@@ -58,7 +69,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </button>
         </div>
 
-        <nav className="mt-6">
+        <nav className="mt-6 flex-1">
           {menuItems.map((item) => (
             <Link
               key={item.href}
@@ -71,6 +82,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </Link>
           ))}
         </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t">
+          <button
+            onClick={handleLogout}
+            className="flex items-center w-full px-2 py-2 text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors"
+          >
+            <LogOut size={20} className="mr-3" />
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -85,8 +107,22 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </button>
 
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Welcome, Admin</span>
-            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+            <div className="text-sm">
+              <span className="text-gray-600">Welcome, </span>
+              <span className="font-medium text-gray-900">
+                {user?.name || "Admin"}
+              </span>
+              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                {user?.role?.toUpperCase()}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
 
@@ -94,6 +130,14 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
+  );
+};
+
+const AdminLayout = ({ children }: AdminLayoutProps) => {
+  return (
+    <AdminProtection>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AdminProtection>
   );
 };
 

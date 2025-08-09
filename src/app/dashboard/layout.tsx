@@ -7,6 +7,9 @@ import { redirect } from "next/navigation";
 
 async function getPetaniData() {
   const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    redirect("/sign-up"); // atau handle sesuai kebutuhan
+  }
 
   const petani = await prisma.user.findUnique({
     where: {

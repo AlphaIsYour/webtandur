@@ -223,6 +223,7 @@ const EditProyekPage = () => {
       ? `/api/proyek/${proyekId}/fase/${faseData.id}`
       : `/api/proyek/${proyekId}/fase`;
     const method = isEdit ? "PUT" : "POST";
+    console.log("Saving faseData:", faseData);
 
     try {
       const response = await fetch(url, {

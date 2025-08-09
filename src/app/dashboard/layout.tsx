@@ -24,7 +24,7 @@ async function getPetaniData() {
   });
 
   if (!petani?.username) {
-    redirect("/setup");
+    redirect("/pengaturan");
   }
 
   if (!petani) {
